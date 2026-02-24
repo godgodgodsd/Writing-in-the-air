@@ -1,0 +1,9 @@
+{
+    "Pointing_Up": "DRAW",
+    "Victory": "ERASE",
+    "Closed_Fist": "STOP",
+    "Open_Palm": "CLEAR",
+    "Thumb_Up": "UNDO",
+    "Thumb_Down": "REDO",
+    "Pinch": "BUTTON_CLICK"
+}

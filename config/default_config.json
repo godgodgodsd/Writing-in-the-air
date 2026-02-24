@@ -1,0 +1,10 @@
+{
+    "window_width": 1280,
+    "window_height": 720,
+    "toolbar_height": 100,
+    "target_fps": 60,
+    "frame_skip": 0,
+    "enable_vsync_simulation": false,
+    "enable_performance_overlay": true,
+    "log_level": "INFO"
+}
