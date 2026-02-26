@@ -5,5 +5,7 @@
     "Open_Palm": "CLEAR",
     "Thumb_Up": "UNDO",
     "Thumb_Down": "REDO",
-    "Pinch": "BUTTON_CLICK"
+    "Pinch": null,
+    "None": "BUTTON_CLICK",
+    "Custom_2": "CLEAR"
 }

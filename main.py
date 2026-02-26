@@ -9,7 +9,7 @@ import time
 
 
 
-def main():
+def main(show_gesture_ui=False):
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
@@ -27,6 +27,10 @@ def main():
     cv2.setMouseCallback("AI Paint", app.handle_mouse)
     # Ensure window matches camera resolution so mouse coords map correctly
     cv2.resizeWindow("AI Paint", width, height)
+    if show_gesture_ui:
+        cv2.namedWindow("Gesture UI", cv2.WINDOW_NORMAL)
+        cv2.setMouseCallback("Gesture UI", app.handle_gesture_ui_mouse)
+        cv2.resizeWindow("Gesture UI", 520, 720)
 
     while True:
         ret, frame = cap.read()
@@ -38,8 +42,12 @@ def main():
         frame = app.process_frame(frame)
     
         cv2.imshow("AI Paint", frame)
+        if show_gesture_ui:
+            cv2.imshow("Gesture UI", app.get_gesture_ui_frame())
 
-        if cv2.waitKey(1) & 0xFF == 27:
+        key = cv2.waitKey(1) & 0xFF
+        app.handle_key(key)
+        if key == 27:
             break
 
     cap.release()
@@ -47,4 +55,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(show_gesture_ui=False)

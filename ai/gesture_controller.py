@@ -82,8 +82,10 @@ class GestureController:
                 self.discovered_gestures.add(custom_gesture)
                 action = self.profile_manager.get_action(custom_gesture)
                 return custom_gesture, custom_confidence, action
+        else:
+            self.custom_gesture_detector.on_no_hand()
 
-        if not gesture_data.gestures:
+        if gesture_data is None or not gesture_data.gestures:
             return None, None, None
 
         gesture = gesture_data.gestures[0][0]
@@ -104,3 +106,34 @@ class GestureController:
 
     def get_discovered_gestures(self):
         return list(self.discovered_gestures)
+
+    def create_custom_gesture(self, hand_landmarks, width, height, name=None):
+        gesture_name = self.custom_gesture_detector.create_custom_gesture(
+            hand_landmarks,
+            width,
+            height,
+            name=name
+        )
+        if gesture_name:
+            self.discovered_gestures.add(gesture_name)
+        return gesture_name
+
+    def set_gesture_action(self, gesture_name, action):
+        self.profile_manager.set_action(gesture_name, action)
+
+    def cycle_gesture_action(self, gesture_name):
+        return self.profile_manager.cycle_action(gesture_name)
+
+    def get_gesture_action(self, gesture_name):
+        return self.profile_manager.get_action(gesture_name)
+
+    def get_custom_gesture_names(self):
+        return self.custom_gesture_detector.get_custom_gesture_names()
+
+    def delete_custom_gesture(self, gesture_name):
+        deleted = self.custom_gesture_detector.delete_custom_gesture(gesture_name)
+        if deleted:
+            self.profile_manager.delete_gesture_mapping(gesture_name)
+            if gesture_name in self.discovered_gestures:
+                self.discovered_gestures.remove(gesture_name)
+        return deleted

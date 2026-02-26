@@ -1,5 +1,7 @@
 import cv2
 import time
+import json
+import os
 
 from ai.hand_tracker import HandTracker
 from ai.gesture_controller import GestureController
@@ -9,6 +11,7 @@ from engine.stroke_engine import StrokeEngine
 
 from ui.toolbar import Toolbar
 from ui.ui_renderer import UIRenderer
+from ui.gesture_management_ui import GestureManagementUI
 
 from core.performance_manager import PerformanceManager
 from core.session_manager import SessionManager
@@ -36,9 +39,21 @@ class AppController:
         # UI
         self.toolbar = Toolbar(width)
         self.ui_renderer = UIRenderer()
+        self.gesture_ui = GestureManagementUI()
 
         # State
         self.current_action = None
+        self.current_gesture_name = None
+        self.current_gesture_confidence = None
+        self.latest_hand_landmarks = None
+        self.info_message = None
+        self.info_message_until = 0
+        self.last_toolbar_button_click = None
+        self.is_recording_action = False
+        self.recorded_action_clicks = []
+        self.custom_actions_path = "config/custom_actions.json"
+        self.custom_actions = self._load_custom_actions()
+        self.gesture_controller.profile_manager.set_custom_actions(list(self.custom_actions.keys()))
 
         self.logger = AppLogger()
         self.session_manager = SessionManager()
@@ -60,6 +75,7 @@ class AppController:
         self.brush_types = ["round", "square", "spray"]
         self.current_brush_index = 0
         self.stroke_engine.brush.set_brush(self.brush_types[self.current_brush_index])
+
     def process_frame(self, frame):
         gesture_data, hands = self.performance.process(frame)
         gesture_name = None
@@ -74,6 +90,7 @@ class AppController:
 
         if hands:
             hand = hands[0]
+            self.latest_hand_landmarks = hand
 
             index_point = self.hand_tracker.extract_index_tip(
                 hand,
@@ -88,6 +105,11 @@ class AppController:
             )
 
             cv2.circle(frame, index_point, 6, (0, 255, 0), -1)
+        else:
+            self.latest_hand_landmarks = None
+
+        self.current_gesture_name = gesture_name
+        self.current_gesture_confidence = confidence
 
         # === Gesture Action Handling ===
         if action == "DRAW":
@@ -112,6 +134,12 @@ class AppController:
 
         elif action == "REDO":
             self.layer_manager.get_active_layer().redo()
+
+        elif action == "BUTTON_CLICK":
+            pass
+        elif action in self.custom_actions:
+            for mapped_button in self.custom_actions[action]:
+                self._apply_button_action(mapped_button, record_click=False)
 
         # === Drawing Update ===
         if index_point:
@@ -166,7 +194,16 @@ class AppController:
         if gesture_name:
             self.ui_renderer.draw_status(
                 frame,
-                f"{gesture_name} ({confidence:.2f})"
+                f"{gesture_name} ({confidence:.2f})",
+                y_offset=20
+            )
+
+        if self.info_message and time.time() < self.info_message_until:
+            self.ui_renderer.draw_status(
+                frame,
+                self.info_message,
+                y_offset=50,
+                color=(255, 255, 0)
             )
         
         fps = self.performance.update_fps()
@@ -183,7 +220,11 @@ class AppController:
         # Mouse clicks disabled - only pinch gestures trigger buttons
         pass
 
-    def _apply_button_action(self, button):
+    def _apply_button_action(self, button, record_click=True):
+        if record_click:
+            self.last_toolbar_button_click = button
+            if self.is_recording_action:
+                self.recorded_action_clicks.append(button)
         # Centralized button action handler used by pinch gestures
         if button.startswith("Brush:"):
             # Cycle to next brush type
@@ -219,5 +260,197 @@ class AppController:
             canvas = self.layer_manager.composite()
             filepath = self.export_manager.export(canvas, export_format)
             print(f"Canvas exported to: {filepath}")
+            self._set_info_message(f"Exported {export_format}: {filepath}")
         except Exception as e:
             print(f"Error exporting canvas: {e}")
+            self._set_info_message(f"Export failed: {export_format}")
+
+    def handle_key(self, key):
+        ui_payload = self.gesture_ui.handle_key(key)
+        if ui_payload:
+            action, _ = ui_payload
+            if action == "refresh":
+                return
+
+        key_char = chr(key).lower() if 0 <= key <= 255 else ""
+        if key_char == "c":
+            self.create_custom_gesture()
+
+    def create_custom_gesture(self, name=None):
+        if not self.latest_hand_landmarks:
+            self._set_info_message("No hand detected for custom gesture")
+            return
+
+        gesture_name = self.gesture_controller.create_custom_gesture(
+            self.latest_hand_landmarks,
+            self.width,
+            self.height,
+            name=name
+        )
+        if not gesture_name:
+            self._set_info_message("Failed to create custom gesture")
+            return
+
+        if self.gesture_controller.get_gesture_action(gesture_name) is None:
+            self.gesture_controller.set_gesture_action(gesture_name, "DRAW")
+
+        self._set_info_message(f"Saved {gesture_name} -> DRAW")
+        self.gesture_ui.gesture_name_input = ""
+
+    def cycle_current_gesture_mapping(self):
+        if not self.current_gesture_name:
+            self._set_info_message("No active gesture to map")
+            return
+
+        self.cycle_gesture_mapping(self.current_gesture_name)
+
+    def cycle_gesture_mapping(self, gesture_name):
+        new_action = self.gesture_controller.cycle_gesture_action(gesture_name)
+        action_label = "None" if new_action is None else new_action
+        self._set_info_message(f"{gesture_name} -> {action_label}")
+
+    def _set_info_message(self, message, duration=2.5):
+        self.info_message = message
+        self.info_message_until = time.time() + duration
+
+    def get_gesture_ui_frame(self):
+        mapping = self.gesture_controller.profile_manager.get_all()
+        valid_actions = self.gesture_controller.profile_manager.get_valid_actions()
+        info = self.info_message if time.time() < self.info_message_until else None
+        confidence = self.current_gesture_confidence if self.current_gesture_confidence is not None else 0.0
+        custom_gesture_names = self.gesture_controller.get_custom_gesture_names()
+        return self.gesture_ui.draw(
+            self.current_gesture_name,
+            confidence,
+            mapping,
+            valid_actions,
+            self.last_toolbar_button_click,
+            self.is_recording_action,
+            self.recorded_action_clicks,
+            custom_gesture_names,
+            self.custom_actions,
+            info_message=info
+        )
+
+    def handle_gesture_ui_mouse(self, event, x, y, flags, param):
+        if event != cv2.EVENT_LBUTTONDOWN:
+            return
+
+        payload = self.gesture_ui.detect_click(x, y)
+        if not payload:
+            return
+
+        action, value = payload
+        if action == "create_custom":
+            self.create_custom_gesture()
+        elif action == "create_custom_named":
+            requested_name = self.gesture_ui.gesture_name_input.strip()
+            self.create_custom_gesture(name=requested_name or None)
+        elif action == "delete_current_gesture":
+            if not self.current_gesture_name:
+                self._set_info_message("No active gesture to delete")
+            else:
+                self.delete_custom_gesture(self.current_gesture_name)
+        elif action == "delete_custom_gesture" and value:
+            self.delete_custom_gesture(value)
+        elif action == "create_action_from_last_click":
+            self.create_action_from_last_click()
+        elif action == "toggle_action_recording":
+            self.toggle_action_recording()
+        elif action == "save_recorded_action":
+            requested_name = self.gesture_ui.action_name_input.strip()
+            self.save_recorded_action(name=requested_name or None)
+        elif action == "delete_custom_action" and value:
+            self.delete_custom_action(value)
+        elif action == "set_named_action" and value:
+            gesture_name, action_name = value
+            self.gesture_controller.set_gesture_action(gesture_name, action_name)
+            label = "None" if action_name is None else action_name
+            self._set_info_message(f"{gesture_name} -> {label}")
+
+    def create_action_from_last_click(self, name=None):
+        if not self.last_toolbar_button_click:
+            self._set_info_message("No toolbar click captured yet")
+            return
+
+        action_name = name or self._generate_custom_action_name()
+        self.custom_actions[action_name] = [self.last_toolbar_button_click]
+        self._save_custom_actions()
+        self.gesture_controller.profile_manager.set_custom_actions(list(self.custom_actions.keys()))
+        self._set_info_message(f"Created {action_name} -> {self.last_toolbar_button_click}")
+
+    def toggle_action_recording(self):
+        self.is_recording_action = not self.is_recording_action
+        if self.is_recording_action:
+            self.recorded_action_clicks = []
+            self._set_info_message("Recording toolbar clicks...")
+        else:
+            count = len(self.recorded_action_clicks)
+            self._set_info_message(f"Recording stopped ({count} clicks)")
+
+    def save_recorded_action(self, name=None):
+        if not self.recorded_action_clicks:
+            self._set_info_message("No recorded clicks to save")
+            return
+
+        action_name = name or self._generate_custom_action_name()
+        action_name = self._resolve_unique_action_name(action_name)
+        self.custom_actions[action_name] = list(self.recorded_action_clicks)
+        self._save_custom_actions()
+        self.gesture_controller.profile_manager.set_custom_actions(list(self.custom_actions.keys()))
+        self.gesture_ui.action_name_input = ""
+        self._set_info_message(f"Saved action {action_name} ({len(self.recorded_action_clicks)} clicks)")
+
+    def delete_custom_action(self, action_name):
+        if action_name not in self.custom_actions:
+            self._set_info_message(f"Action not found: {action_name}")
+            return
+        del self.custom_actions[action_name]
+        self._save_custom_actions()
+        self.gesture_controller.profile_manager.set_custom_actions(list(self.custom_actions.keys()))
+        self.gesture_controller.profile_manager.clear_action_references(action_name)
+        self._set_info_message(f"Deleted action: {action_name}")
+
+    def delete_custom_gesture(self, gesture_name):
+        deleted = self.gesture_controller.delete_custom_gesture(gesture_name)
+        if deleted:
+            self._set_info_message(f"Deleted gesture: {gesture_name}")
+        else:
+            self._set_info_message(f"Gesture not found: {gesture_name}")
+
+    def _generate_custom_action_name(self):
+        index = 1
+        while f"USER_ACTION_{index}" in self.custom_actions:
+            index += 1
+        return f"USER_ACTION_{index}"
+
+    def _resolve_unique_action_name(self, requested_name):
+        cleaned = requested_name.strip()
+        if not cleaned:
+            return self._generate_custom_action_name()
+        if cleaned not in self.custom_actions:
+            return cleaned
+        suffix = 2
+        while f"{cleaned}_{suffix}" in self.custom_actions:
+            suffix += 1
+        return f"{cleaned}_{suffix}"
+
+    def _load_custom_actions(self):
+        if os.path.exists(self.custom_actions_path):
+            with open(self.custom_actions_path, "r") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    normalized = {}
+                    for key, value in data.items():
+                        if isinstance(value, list):
+                            normalized[key] = [str(v) for v in value]
+                        elif isinstance(value, str):
+                            normalized[key] = [value]
+                    return normalized
+        self._save_custom_actions({})
+        return {}
+
+    def _save_custom_actions(self, data=None):
+        to_write = self.custom_actions if data is None else data
+        with open(self.custom_actions_path, "w") as f:
+            json.dump(to_write, f, indent=4)
