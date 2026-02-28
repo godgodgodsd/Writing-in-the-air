@@ -30,7 +30,3 @@ class SessionManager:
                 layer_manager.layers[i].canvas = img
         except:
             pass
-
-    def export_png(self, layer_manager):
-        composite = layer_manager.composite()
-        cv2.imwrite("exports/export.png", composite)

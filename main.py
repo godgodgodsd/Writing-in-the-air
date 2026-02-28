@@ -5,7 +5,6 @@ Entry Point
 
 import cv2
 from core.app_controller import AppController
-import time
 
 
 

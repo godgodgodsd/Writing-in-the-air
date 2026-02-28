@@ -14,9 +14,6 @@ from ui.ui_renderer import UIRenderer
 from ui.gesture_management_ui import GestureManagementUI
 
 from core.performance_manager import PerformanceManager
-from core.session_manager import SessionManager
-from core.plugin_system import PluginSystem
-from core.logger import AppLogger
 from core.export_manager import ExportManager
 
 
@@ -55,9 +52,6 @@ class AppController:
         self.custom_actions = self._load_custom_actions()
         self.gesture_controller.profile_manager.set_custom_actions(list(self.custom_actions.keys()))
 
-        self.logger = AppLogger()
-        self.session_manager = SessionManager()
-        self.plugins = PluginSystem()
         self.export_manager = ExportManager()
 
         self.performance = PerformanceManager(

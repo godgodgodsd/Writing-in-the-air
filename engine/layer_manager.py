@@ -8,7 +8,6 @@ Supports:
 """
 
 import numpy as np
-import cv2
 
 
 class Layer:

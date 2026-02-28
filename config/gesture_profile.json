@@ -6,6 +6,5 @@
     "Thumb_Up": "UNDO",
     "Thumb_Down": "REDO",
     "Pinch": null,
-    "None": "BUTTON_CLICK",
-    "Custom_2": "CLEAR"
+    "None": "BUTTON_CLICK"
 }
