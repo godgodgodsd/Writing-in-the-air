@@ -1,85 +1,85 @@
-🖋️ Writing in the Air
-Enterprise-grade AI-powered air drawing and painting experience — interact with your webcam to write and paint in mid-air using hand gestures and AI gesture recognition.
-Powered by computer vision and gesture analysis, this project lets users draw, erase, undo, redo, export artwork, and switch brushes without touching a single key — all using natural hand movements.
-🚀 Features
-✨ AI Gesture Recognition
-Recognizes gestures in real time from webcam video to control actions like drawing, erasing, clearing, undo/redo, and exporting.
-🖌️ Natural Air Drawing
-Paint on an overlay canvas just by moving your index finger — visually composited with webcam feed.
-🎨 Customizable Painting Tools
-Multiple brushes (round, square, spray) with adjustable sizes.
-📦 Layered Canvas Management
-Supports layering, undo/redo functionality, and clean clearing.
-🗂️ Export Artwork
-Save your artwork in multiple export formats (e.g., PNG, JPEG).
-💡 Real-time UI Overlay
-Visual toolbar and instant feedback of gestures and brush previews.
-📸 Preview
-Add screenshots here to showcase live webcam drawing, gesture feedback, toolbar, and exported artwork.
-🧠 How It Works
-Capture Camera Feed
-The app grabs frames from your webcam (cv2.VideoCapture(0)).
-Gesture & Hand Tracking
-AI modules (HandTracker, GestureController) analyze each frame to identify hand positions and gestures.
-Drawing Engine
-Stroke data is processed and rendered on layered canvases managed by the core engine.
-User Interaction
-Pinch gestures are used to interact with the UI toolbar — change brush, erase, clear, adjust sizes, and export.
-Export and Save
-Completed creations can be saved through the export system.
-This interaction model enables a fluid, touch-free drawing experience — perfect for demos, HCI research, creative art projects, and AI-driven interfaces.
-🛠️ Installation
-⚙️ Requirements
-Python 3.8+
-Webcam
-Dependencies listed in requirements.txt
-Clone the repository:
+# Enterprise AI Paint (Writing in the Air)
+
+Real-time air drawing with a webcam using hand tracking and gesture recognition. Draw on a virtual canvas, switch tools, and export artwork without touching the keyboard.
+
+## Features
+- Gesture-driven drawing, erase, clear, undo, and redo actions
+- Pinch-to-click toolbar controls for brush selection and size changes
+- Multiple brush types: round, square, spray, plus eraser
+- Layered canvas with undo/redo support
+- Export to PNG, JPEG, or PDF
+- Live UI overlay with brush preview and FPS
+
+## Tech Stack
+- Python 3.8+
+- OpenCV (camera capture and rendering)
+- MediaPipe Tasks (hand tracking and gesture recognition)
+
+## Requirements
+- Webcam
+- Python 3.8+ (3.10+ recommended)
+- Dependencies in `requirements.txt`
+
+## Clone
+```bash
 git clone https://github.com/godgodgodsd/Writing-in-the-air.git
 cd Writing-in-the-air
-Install dependencies:
+```
+
+## Install
+```bash
+python -m venv venv
+venv\Scripts\activate
 pip install -r requirements.txt
-Run the application:
+```
+
+## Run
+```bash
 python main.py
-🎮 Controls & Interaction
-Action	Gesture / Interaction
-Draw	Pinch & move index finger
-Erase	Select Eraser in toolbar with pinch
-Brush switch	Cycle through brushes with toolbar
-Adjust brush size	+Size / -Size buttons
-Undo/Redo	Corresponding toolbar buttons
-Clear Canvas	Clear button
-Export Artwork	Export options in toolbar
-Visual feedback is shown on-screen for active gesture and FPS.
-🧩 Architecture Overview
-📦 Writing-in-the-air
-├── core/                  # App controller and session management
-├── ai/                    # Hand tracking & gesture logic
-├── engine/                # Drawing & stroke management
-├── ui/                    # Toolbar & UI rendering
-├── exports/               # Export and file saving subsystem
-├── main.py                # Entry point application loop
-├── requirements.txt       # Python dependencies
-📁 Project Structure
-Folder	Purpose
-core/	Main controller & performance handling
-ai/	Gesture recognition and hand tracking modules
-engine/	Paint engine, layer managers, stroke logic
-ui/	Toolbar and UI overlay rendering
-exports/	Image export utilities
-📌 Best Practices
-Keep your webcam well-lit for consistent gesture detection.
-Use a plain background to improve tracking performance.
-Adjust brush size using size buttons — no keyboard input needed.
-🧪 Troubleshooting
-✔️ Camera not detected
-Make sure no other application is using the webcam.
-✔️ Low gesture accuracy
-Enhance lighting and ensure your hand is fully visible in frame.
-✔️ Export errors
-Check write permissions for the output directory.
-✨ Contributing
-Thank you for your interest! Contributions are welcome:
-⭐ Star the repo
-🐛 Report issues
-🛠️ Open pull requests
-📄 Improve docs and examples
+```
+Press `Esc` to exit the app.
+
+## Controls
+### Drawing gestures (default mapping)
+Configured in `config/gesture_profile.json`:
+- `Pointing_Up` -> DRAW
+- `Victory` -> ERASE
+- `Closed_Fist` -> STOP
+- `Open_Palm` -> CLEAR
+- `Thumb_Up` -> UNDO
+- `Thumb_Down` -> REDO
+
+### Toolbar (pinch to click)
+- Brush toggle: cycles round -> square -> spray
+- Eraser
+- Undo / Redo
+- Size - / Size +
+- Export: choose PNG, JPEG, or PDF
+
+## Output
+- Exports are saved to the `exports/` directory with timestamped filenames.
+
+## Project Structure
+```
+ai/         Gesture recognition, custom gestures, profiles
+core/       App controller, session/export/performance managers
+engine/     Stroke engine, layers, brush logic
+ui/         Toolbar and UI overlay rendering
+models/     MediaPipe task models
+exports/    Generated artwork exports
+main.py     Application entry point
+```
+
+## Configuration
+- Gesture mapping: `config/gesture_profile.json`
+- Model files: `models/gesture_recognizer.task` and `models/hand_landmarker.task`
+
+## Troubleshooting
+- Camera not detected: ensure no other app is using the webcam.
+- App opens but no drawing: make sure gesture model files exist under `models/`.
+- Low gesture accuracy: improve lighting and keep hand fully visible.
+- Export not saving: check write permissions for `exports/`.
+- PDF export errors: confirm Pillow is installed (`pip install pillow`).
+
+## Contributing
+Issues and pull requests are welcome. Keep changes focused and include a short description of the behavior change.
