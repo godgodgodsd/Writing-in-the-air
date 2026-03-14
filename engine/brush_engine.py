@@ -9,7 +9,7 @@ Supports:
 """
 
 import cv2
-import random
+import numpy as np
 
 
 class BrushEngine:
@@ -30,31 +30,39 @@ class BrushEngine:
 
     def draw(self, canvas, point, velocity):
         size = self.base_size
+        color = (*self.color, 255)
 
         if self.brush_type == "round":
-            cv2.circle(canvas, point, size, (*self.color, 255), -1)
+            cv2.circle(canvas, point, size, color, -1)
 
         elif self.brush_type == "square":
+            # Draw a filled square brush.
             x, y = point
             cv2.rectangle(
                 canvas,
                 (x-size, y-size),
                 (x+size, y+size),
-                (*self.color, 255),
+                color,
                 -1
             )
 
         elif self.brush_type == "spray":
-            for _ in range(size * 3):
-                offset_x = random.randint(-size, size)
-                offset_y = random.randint(-size, size)
-                cv2.circle(
-                    canvas,
-                    (point[0] + offset_x, point[1] + offset_y),
-                    1,
-                    (*self.color, 255),
-                    -1
-                )
+            count = max(1, size * 3)
+            offsets = np.random.randint(-size, size + 1, size=(count, 2), dtype=np.int32)
+            points = offsets + np.array([point[0], point[1]], dtype=np.int32)
+
+            h, w = canvas.shape[:2]
+            valid = (
+                (points[:, 0] >= 0) & (points[:, 0] < w) &
+                (points[:, 1] >= 0) & (points[:, 1] < h)
+            )
+            valid_points = points[valid]
+            if valid_points.size:
+                canvas[valid_points[:, 1], valid_points[:, 0]] = color
 
         elif self.brush_type == "eraser":
             cv2.circle(canvas, point, size, (0, 0, 0, 0), -1)
+
+        else:
+            # Fallback to round brush for unknown brush ids.
+            cv2.circle(canvas, point, size, color, -1)

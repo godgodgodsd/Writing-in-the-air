@@ -103,10 +103,12 @@ class CustomGestureDetector:
             self.on_no_hand()
             return None, None
 
+        # Pinch detection is treated as a click-like gesture.
         pinch_result = self._detect_pinch(hand_landmarks, width, height, current_time)
         if pinch_result[0] is not None:
             return pinch_result
 
+        # If not a pinch, check finger extension patterns.
         custom_result = self._detect_custom_finger_gesture(
             hand_landmarks,
             width,

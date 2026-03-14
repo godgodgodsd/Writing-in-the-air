@@ -32,6 +32,7 @@ class StrokeEngine:
         if not self.drawing:
             return
 
+        # Smooth the input to reduce jitter before drawing.
         smoothed, velocity = self.smoother.smooth(point)
         if smoothed is None:
             return

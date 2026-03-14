@@ -4,6 +4,7 @@ Strict enterprise audit compliance.
 """
 
 import time
+import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
@@ -28,7 +29,7 @@ class HandTracker:
         # Verified against official documentation
 
     def detect(self, frame):
-        rgb_frame = frame[:, :, ::-1].copy()  # BGR → RGB + ensure contiguous
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         mp_image = mp.Image(
             image_format=mp.ImageFormat.SRGB,
@@ -43,6 +44,7 @@ class HandTracker:
         )
         # Verified against official documentation
 
+        # Return raw landmark lists for further processing.
         return result.hand_landmarks
 
     @staticmethod
@@ -72,3 +74,4 @@ class HandTracker:
         y2 = index.y * height
 
         return ((x2 - x1)**2 + (y2 - y1)**2) ** 0.5
+

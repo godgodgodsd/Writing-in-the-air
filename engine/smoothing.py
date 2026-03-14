@@ -31,11 +31,11 @@ class StrokeSmoother:
         dy = point[1] - self.prev_point[1]
         dist = math.sqrt(dx*dx + dy*dy)
 
-        # Jitter rejection
+        # Ignore tiny movements to avoid jitter.
         if dist < self.min_distance:
             return None, 0
 
-        # Exponential smoothing
+        # Exponential smoothing to stabilize the stroke.
         smoothed_x = int(
             self.alpha * point[0] +
             (1 - self.alpha) * self.prev_point[0]

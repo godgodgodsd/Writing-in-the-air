@@ -1,20 +1,25 @@
 import os
 import importlib
+import sys
 
 
 class PluginSystem:
 
-    def __init__(self):
+    def __init__(self, plugin_dir="plugins"):
+        self.plugin_dir = plugin_dir
         self.plugins = []
         self.load_plugins()
 
     def load_plugins(self):
-        if not os.path.exists("plugins"):
+        if not os.path.exists(self.plugin_dir):
             return
 
-        for file in os.listdir("plugins"):
+        if self.plugin_dir not in sys.path:
+            sys.path.insert(0, self.plugin_dir)
+
+        for file in os.listdir(self.plugin_dir):
             if file.endswith(".py"):
-                module_name = f"plugins.{file[:-3]}"
+                module_name = file[:-3]
                 module = importlib.import_module(module_name)
 
                 if hasattr(module, "register"):
@@ -23,4 +28,8 @@ class PluginSystem:
     def execute(self, event_name, context):
         for plugin in self.plugins:
             if hasattr(plugin, event_name):
-                getattr(plugin, event_name)(context)
+                try:
+                    getattr(plugin, event_name)(context)
+                except Exception:
+                    # Avoid crashing the app on plugin errors.
+                    continue

@@ -52,12 +52,12 @@ class GestureManagementUI:
         self._draw_input_box(panel, 15, 174, 485, 28, "Action Name", self.action_name_input, "action_name")
 
         click_text = f"Last toolbar click: {last_toolbar_click}" if last_toolbar_click else "Last toolbar click: None"
-        cv2.putText(panel, click_text[:78], (15, 220), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (150, 210, 255), 1)
+        cv2.putText(panel, click_text[:78], (15, 250), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (150, 210, 255), 1)
         rec_text = "Recorded clicks: " + (", ".join(recorded_clicks) if recorded_clicks else "<none>")
-        cv2.putText(panel, rec_text[:78], (15, 240), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (140, 230, 170), 1)
+        cv2.putText(panel, rec_text[:78], (15, 270), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (140, 230, 170), 1)
 
-        cv2.putText(panel, "Gesture -> Action", (15, 270), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (230, 230, 230), 1)
-        y = 296
+        cv2.putText(panel, "Gesture -> Action", (15, 294), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (230, 230, 230), 1)
+        y = 320
         for gesture_name in sorted(gesture_map.keys()):
             action = gesture_map.get(gesture_name)
             action_text = "None" if action is None else str(action)

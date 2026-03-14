@@ -14,8 +14,9 @@ class PerformanceManager:
         self.skip_rate = skip_rate
         self.frame_counter = 0
 
-        self.frame_queue = queue.Queue(maxsize=2)
-        self.result_queue = queue.Queue(maxsize=2)
+        # Keep queues tiny to prioritize fresh data and reduce lag.
+        self.frame_queue = queue.Queue(maxsize=1)
+        self.result_queue = queue.Queue(maxsize=1)
         self.running = True
 
         self.last_gesture_result = None
@@ -23,6 +24,7 @@ class PerformanceManager:
 
         self.fps = 0
         self.last_time = time.time()
+        self.fps_smoothed = 0.0
 
         self.worker = threading.Thread(target=self._ai_worker, daemon=True)
         self.worker.start()
@@ -39,33 +41,52 @@ class PerformanceManager:
 
     def _ai_worker(self):
         while self.running:
-            if not self.frame_queue.empty():
-                frame = self.frame_queue.get()
-                try:
-                    hands = self.hand_tracker.detect(frame)
-                    hand_landmarks = hands[0] if hands else None
-                    gesture_data = self.gesture_controller.recognize(
-                        frame,
-                        hand_landmarks=hand_landmarks,
-                        width=self.ai_width,
-                        height=self.ai_height
-                    )
-                except Exception:
-                    gesture_data = None
-                    hands = []
-                self.result_queue.put((gesture_data, hands))
+            try:
+                frame = self.frame_queue.get(timeout=0.02)
+            except queue.Empty:
+                continue
+
+            try:
+                # Run AI on the downscaled frame in a background thread.
+                hands = self.hand_tracker.detect(frame)
+                hand_landmarks = hands[0] if hands else None
+                gesture_data = self.gesture_controller.recognize(
+                    frame,
+                    hand_landmarks=hand_landmarks,
+                    width=self.ai_width,
+                    height=self.ai_height
+                )
+            except Exception:
+                gesture_data = None
+                hands = []
+
+            # Drop stale result and keep only latest inference.
+            try:
+                self.result_queue.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                self.result_queue.put_nowait((gesture_data, hands))
+            except queue.Full:
+                pass
 
     def process(self, frame):
-        # Resize for AI only
-        small_frame = cv2.resize(frame, (self.ai_width, self.ai_height))
-
         self.frame_counter += 1
         if self.frame_counter % self.skip_rate == 0:
-            if not self.frame_queue.full():
-                self.frame_queue.put(small_frame)
+            # Resize only when we actually schedule AI work.
+            small_frame = cv2.resize(frame, (self.ai_width, self.ai_height))
+            if self.frame_queue.full():
+                try:
+                    self.frame_queue.get_nowait()
+                except queue.Empty:
+                    pass
+            try:
+                self.frame_queue.put_nowait(small_frame)
+            except queue.Full:
+                pass
 
-        # Get AI result if available
-        if not self.result_queue.empty():
+        # Get the most recent AI result if available.
+        while not self.result_queue.empty():
             gesture_data, hands = self.result_queue.get()
             self.last_gesture_result = gesture_data
             self.last_hands = hands
@@ -74,10 +95,15 @@ class PerformanceManager:
 
     def update_fps(self):
         current = time.time()
-        self.fps = 1 / max(1e-5, (current - self.last_time))
+        instant_fps = 1 / max(1e-5, (current - self.last_time))
+        if self.fps_smoothed == 0.0:
+            self.fps_smoothed = instant_fps
+        else:
+            self.fps_smoothed = (0.15 * instant_fps) + (0.85 * self.fps_smoothed)
+        self.fps = self.fps_smoothed
         self.last_time = current
         return int(self.fps)
 
     def stop(self):
         self.running = False
-        self.worker.join()
+        self.worker.join(timeout=0.5)

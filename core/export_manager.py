@@ -64,7 +64,7 @@ class ExportManager:
     def export(self, canvas, export_format):
         """Export canvas in specified format"""
         format_lower = export_format.lower()
-        
+
         if format_lower == "jpeg" or format_lower == "jpg":
             return self.export_jpeg(canvas)
         elif format_lower == "png":
@@ -72,4 +72,5 @@ class ExportManager:
         elif format_lower == "pdf":
             return self.export_pdf(canvas)
         else:
+            # Guard against unsupported formats.
             raise ValueError(f"Unsupported format: {export_format}")

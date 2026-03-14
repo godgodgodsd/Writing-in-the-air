@@ -8,6 +8,7 @@ Supports:
 """
 
 import time
+import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
@@ -51,7 +52,7 @@ class GestureController:
         self.ai_busy = False
 
     def recognize(self, frame, hand_landmarks=None, width=None, height=None):
-        rgb_frame = frame[:, :, ::-1].copy()  # BGR → RGB + ensure contiguous
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         mp_image = mp.Image(
             image_format=mp.ImageFormat.SRGB,
@@ -70,7 +71,7 @@ class GestureController:
 
         # Verified against official documentation
 
-        # Check custom gestures first (e.g., Pinch)
+        # Check custom gestures first (e.g., Pinch) so they take priority.
         if hand_landmarks is not None and width is not None and height is not None:
             custom_gesture, custom_confidence = self.custom_gesture_detector.detect(
                 hand_landmarks,
@@ -137,3 +138,4 @@ class GestureController:
             if gesture_name in self.discovered_gestures:
                 self.discovered_gestures.remove(gesture_name)
         return deleted
+

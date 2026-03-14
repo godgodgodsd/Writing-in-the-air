@@ -6,7 +6,7 @@ Enterprise AI Paint is a real-time, camera-driven drawing app that uses hand tra
 - Real-time hand tracking with MediaPipe Tasks.
 - Gesture recognition with configurable gesture-to-action mapping.
 - Pinch-based toolbar clicks and continuous size adjustment.
-- Brush system with round, square, spray, eraser, and optional ABR stamp brushes.
+- Brush system with round, square, spray, and eraser.
 - Layered canvas with undo/redo per layer.
 - Export to PNG, JPEG, and PDF.
 - Gesture management UI for custom gestures and actions.
@@ -70,7 +70,9 @@ Configured in `config/gesture_profile.json`:
 
 ### Keyboard Shortcuts
 - `c`: create a custom gesture from the current hand pose
-- `b`: reload ABR brushes from the `brushes/` folder
+- `s`: save the current session
+- `l`: load the last saved session
+- `x`: clear logs
 
 ## Custom Gestures and Actions
 - Custom gestures are stored in `config/custom_gestures.json`.
@@ -81,15 +83,19 @@ Configured in `config/gesture_profile.json`:
 - `main.py`: entry point
 - `run_gesture_ui.py`: launches gesture management UI
 - `ai/`: hand tracking, gesture recognition, profiles, and custom gestures
-- `engine/`: brush, stroke, layer, smoothing, and ABR loading
+- `engine/`: brush, stroke, layer, and smoothing
 - `ui/`: toolbar, status UI, and gesture management panel
-- `core/`: app controller, performance, export, logging, sessions
+- `core/`: app controller, performance, export, logging, sessions, plugins
 - `config/`: gesture mappings and runtime settings
 - `exports/`: saved images
 - `models/`: MediaPipe Tasks models
+ - `plugins/`: optional runtime plugins (not required)
 
-## ABR Brush Import
-Place `.abr` files in the `brushes/` folder. The loader attempts to use optional parsers (such as `abr_parser` or `abr`). If no compatible backend is available, ABR import will be skipped with a message.
+## Plugins
+Drop a `.py` file into `plugins/`. The plugin can expose a `register()` function returning an object that implements any of:
+- `on_frame(context)`: called each frame after processing
+- `on_gesture(context)`: called when a gesture is detected
+- `on_export(context)`: called after a successful export
 
 ## How It Works (Detailed)
 ### Frame Processing Loop
@@ -111,7 +117,7 @@ Place `.abr` files in the `brushes/` folder. The loader attempts to use optional
 
 ### Drawing Engine
 1. `StrokeEngine` manages stroke lifecycle and uses `StrokeSmoother` to reduce jitter.
-2. `BrushEngine` renders to the active layer using round, square, spray, eraser, or ABR stamp brushes.
+2. `BrushEngine` renders to the active layer using round, square, spray, or eraser brushes.
 3. `LayerManager` composites layers into a single canvas and tracks bounding boxes for efficient blending.
 
 ### UI and Interaction
